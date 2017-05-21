@@ -1,3 +1,8 @@
+Version 0.9.0
+
+    Improve error reporting again by including more details. This changes the
+    error messages format compared to the previous versions.
+
 Version 0.8.1
 
     Add cpp11.h file missing from 0.8.0 distribution archive.

@@ -36,6 +36,9 @@
 #include "utility.h"
 #include "errors_impl.h"
 
+#include <cstring>
+#include <sstream>
+
 namespace xml
 {
 
@@ -116,6 +119,96 @@ namespace impl
 // call error_handler's methods, because they may throw (it is in fact often
 // desirable). So we collect the errors and "replay" them after returning from
 // C code.
+
+std::string build_message(const std::string& what, const xmlError& error)
+{
+    std::ostringstream oss;
+
+    // We currently don't decode domain and code to their symbolic
+    // representation as it doesn't seem to be worth it in practice, the error
+    // message is usually clear enough, while these numbers can be used for
+    // automatic classification of messages.
+    oss << "XML " << what << " " << error.domain << "." << error.code << ": ";
+    if (error.message && *error.message)
+    {
+        if (error.message[std::strlen(error.message) - 1] == '\n')
+            error.message[std::strlen(error.message) - 1] = '\0';
+        oss << error.message;
+    }
+
+    if (error.file)
+    {
+        oss << " at " << error.file;
+        if (error.line)
+        {
+            oss << ":" << error.line;
+
+            // Column information, if available, is passed in the second int
+            // field (first one is used with the first string field, see below).
+            if (error.int2)
+            {
+                oss << "," << error.int2;
+            }
+        }
+    }
+
+    if (error.str1)
+    {
+        oss << " while processing \"" << error.str1 << "\"";
+        if (error.int1)
+        {
+            oss << " at position " << error.int1;
+        }
+    }
+
+    return oss.str();
+}
+
+extern "C" void cb_messages_structured_error(void *out, xmlErrorPtr error)
+{
+    try
+    {
+        // This is not supposed to happen, but don't crash if it ever does.
+        if (!error)
+            return;
+
+        error_messages* const messages = static_cast<error_messages*>(out);
+
+        switch (error->level)
+        {
+            case XML_ERR_NONE:
+                break;
+
+            case XML_ERR_WARNING:
+                // Some libxml warnings are pretty fatal errors, e.g. failing
+                // to open the input file is reported as a warning with code
+                // XML_IO_LOAD_ERROR. Consider all IO warnings as fatal errors
+                // to work around this.
+                if (error->domain != XML_FROM_IO)
+                {
+                    messages->on_warning(build_message("warning", *error));
+                    return;
+                }
+                //else: fallthrough
+
+            case XML_ERR_ERROR:
+                messages->on_error(build_message("error", *error));
+                return;
+
+            case XML_ERR_FATAL:
+                messages->on_error(build_message("fatal error", *error));
+                return;
+        }
+
+        // This is not supposed to happen neither, but at least warn about it
+        // if it does, in case there is anything useful in the message.
+        std::ostringstream oss;
+        oss << "message of unknown level " << error->level;
+
+        messages->on_warning(build_message(oss.str(), *error));
+    }
+    catch (...) {}
+}
 
 extern "C" void cb_messages_warning_v(void *out, const char *message, va_list ap)
 {
@@ -198,15 +291,26 @@ std::string errors_collector::format_for_print(const error_message& msg) const
 // ----------------------------------------------------------------------------
 
 global_errors_installer::global_errors_installer(error_messages& on_error) :
-    xml_error_orig_(xmlGenericError),
-    xml_error_context_orig_(xmlGenericErrorContext)
+    xml_generic_error_orig_(xmlGenericError),
+    xml_generic_error_context_orig_(xmlGenericErrorContext),
+    xml_structured_error_orig_(xmlStructuredError),
+    xml_structured_error_context_orig_(xmlStructuredErrorContext)
 {
+    // We need to set both structured and generic error callbacks: structured
+    // one because it gives us more information and does it in atomic way,
+    // instead of splitting a single error message in multiple parts and
+    // overrides generic for normal XML errors, but also generic one to catch
+    // errors from e.g. XML saving code which doesn't use structured error
+    // callback at all and would just silently (!) lose data if any errors
+    // happen during encoding without this.
+    xmlSetStructuredErrorFunc(&on_error, cb_messages_structured_error);
     xmlSetGenericErrorFunc(&on_error, cb_messages_error);
 }
 
 global_errors_installer::~global_errors_installer()
 {
-    xmlSetGenericErrorFunc(xml_error_context_orig_, xml_error_orig_);
+    xmlSetGenericErrorFunc(xml_generic_error_context_orig_, xml_generic_error_orig_);
+    xmlSetStructuredErrorFunc(xml_structured_error_context_orig_, xml_structured_error_orig_);
 }
 
 } // namespace impl

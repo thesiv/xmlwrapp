@@ -403,6 +403,41 @@ BOOST_AUTO_TEST_CASE( cant_erase_root )
 }
 
 
+/*
+ * This test checks xml::tree_parser ctor to make sure it throws an
+ * exception containing the name of the input file in its message.
+ */
+BOOST_AUTO_TEST_CASE( error_from_ctor )
+{
+    try
+    {
+        xml::tree_parser parser("bloordyblop");
+    }
+    catch (std::exception& e)
+    {
+        // We can't just use BOOST_REQUIRE because we want to show the message.
+        bool const contains = strstr(e.what(), "bloordyblop") != NULL;
+        if ( !contains )
+        {
+            BOOST_FAIL("exception message is: " << e.what());
+        }
+        else
+        {
+            // The condition is true, but still retest it to include the test
+            // in the number of passed ones.
+            BOOST_REQUIRE( contains );
+            return;
+        }
+    }
+    catch (...)
+    {
+        BOOST_FAIL("unexpected exception");
+    }
+
+    BOOST_FAIL("expected exception not thrown");
+}
+
+
 // Simple RAII helper to remove a temporary test file.
 class temp_test_file
 {
