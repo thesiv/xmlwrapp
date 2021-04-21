@@ -51,93 +51,6 @@
 namespace xml
 {
 
-class error_messages;
-
-/**
-    This exception class is thrown by xmlwrapp for all runtime XML-related
-    errors.
-
-    @note C++ runtime may still thrown other errors when used from xmlwrapp.
-          Also, std::bad_alloc() is thrown in out-of-memory situations.
-
-    @since 0.7.0
- */
-class XMLWRAPP_API exception : public std::runtime_error
-{
-public:
-    explicit exception(const std::string& what);
-    explicit exception(const error_messages& what);
-};
-
-
-/**
-    The xml::error_handler class is used to handle libxml2 errors and warnings
-    emitted during parsing, validation etc.
-
-    Although you can derive a custom handler from it, the specializations
-    included in xmlwrapp should suffice for most uses: throw_on_error and
-    throw_on_error_or_warning throw on issues, error_messages collects errors
-    and warnings without throwing.
-
-    @since 0.7.0
- */
-class XMLWRAPP_API error_handler
-{
-public:
-    virtual ~error_handler() {}
-
-    /// Called by xmlwrapp to report an error.
-    virtual void on_error(const std::string& msg) = 0;
-
-    /// Called by xmlwrapp to report a warning.
-    virtual void on_warning(const std::string& msg) = 0;
-};
-
-
-/**
-    An error handler that ignores both errors and warnings.
-
-    @see ignore_errors
- */
-class error_handler_ignore_errors : public error_handler
-{
-public:
-    void on_error(const std::string&) {}
-    void on_warning(const std::string&) {}
-};
-
-/**
-    Specialization of error_handler that throws on any error.
-
-    @see throw_on_error
- */
-class error_handler_throw_on_error : public error_handler
-{
-public:
-    void on_error(const std::string& msg) { throw exception(msg); }
-    void on_warning(const std::string&) {}
-};
-
-/**
-    Specialization of error_handler that throws on any error or warning.
-
-    @see throw_on_error_or_warning
- */
-class error_handler_throw_on_error_or_warning : public error_handler_throw_on_error
-{
-public:
-    void on_warning(const std::string& msg) { on_error(msg); }
-};
-
-/// Error handler ignoring all errors, its use is strongly discouraged.
-extern XMLWRAPP_API error_handler_ignore_errors              ignore_errors;
-
-/// Error handler object that throws on any error.
-extern XMLWRAPP_API error_handler_throw_on_error             throw_on_error;
-
-/// Error handler object that throws on any error or warning.
-extern XMLWRAPP_API error_handler_throw_on_error_or_warning  throw_on_error_or_warning;
-
 
 /**
     Single message in error_messages.
@@ -238,6 +151,92 @@ private:
     bool          has_errors_;
     bool          has_warnings_;
 };
+
+
+/**
+    This exception class is thrown by xmlwrapp for all runtime XML-related
+    errors.
+
+    @note C++ runtime may still thrown other errors when used from xmlwrapp.
+          Also, std::bad_alloc() is thrown in out-of-memory situations.
+
+    @since 0.7.0
+ */
+class XMLWRAPP_API exception : public std::runtime_error
+{
+public:
+    explicit exception(const std::string& what);
+    explicit exception(const error_messages& what);
+};
+
+
+/**
+    The xml::error_handler class is used to handle libxml2 errors and warnings
+    emitted during parsing, validation etc.
+
+    Although you can derive a custom handler from it, the specializations
+    included in xmlwrapp should suffice for most uses: throw_on_error and
+    throw_on_error_or_warning throw on issues, error_messages collects errors
+    and warnings without throwing.
+
+    @since 0.7.0
+ */
+class XMLWRAPP_API error_handler
+{
+public:
+    virtual ~error_handler() {}
+
+    /// Called by xmlwrapp to report an error.
+    virtual void on_error(const std::string& msg) = 0;
+
+    /// Called by xmlwrapp to report a warning.
+    virtual void on_warning(const std::string& msg) = 0;
+};
+
+
+/**
+    An error handler that ignores both errors and warnings.
+
+    @see ignore_errors
+ */
+class error_handler_ignore_errors : public error_handler
+{
+public:
+    void on_error(const std::string&) {}
+    void on_warning(const std::string&) {}
+};
+
+/**
+    Specialization of error_handler that throws on any error.
+
+    @see throw_on_error
+ */
+class error_handler_throw_on_error : public error_handler
+{
+public:
+    void on_error(const std::string& msg) { throw exception(msg); }
+    void on_warning(const std::string&) {}
+};
+
+/**
+    Specialization of error_handler that throws on any error or warning.
+
+    @see throw_on_error_or_warning
+ */
+class error_handler_throw_on_error_or_warning : public error_handler_throw_on_error
+{
+public:
+    void on_warning(const std::string& msg) { on_error(msg); }
+};
+
+/// Error handler ignoring all errors, its use is strongly discouraged.
+extern XMLWRAPP_API error_handler_ignore_errors              ignore_errors;
+
+/// Error handler object that throws on any error.
+extern XMLWRAPP_API error_handler_throw_on_error             throw_on_error;
+
+/// Error handler object that throws on any error or warning.
+extern XMLWRAPP_API error_handler_throw_on_error_or_warning  throw_on_error_or_warning;
 
 
 } // namespace xml
