@@ -162,11 +162,15 @@ private:
 
     @since 0.7.0
  */
-class XMLWRAPP_API exception : public std::runtime_error
+class exception : public std::runtime_error
 {
 public:
-    explicit exception(const std::string& what);
-    explicit exception(const error_messages& what);
+    explicit exception(const std::string& what)
+        : std::runtime_error(what)
+    {}
+    explicit exception(const error_messages& what)
+        : std::runtime_error(what.print())
+    {}
 };
 
 
