@@ -57,7 +57,7 @@ namespace xml
 
     @since 0.7.0
  */
-class XMLWRAPP_API error_message
+class error_message
 {
 public:
     /// A type for different type of errors
